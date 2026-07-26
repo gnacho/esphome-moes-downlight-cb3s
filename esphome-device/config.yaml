@@ -45,3 +45,6 @@ binary_sensor:
     on_click:
       then:
         - light.toggle: light_rgbww
+
+wifi:
+  ap:
