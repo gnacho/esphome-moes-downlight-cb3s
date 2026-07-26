@@ -1,20 +1,54 @@
 # Downlight RGBWW Tuya CB3S — ESPHome
 
-> Mi historia personal flasheando un downlight barato de AliExpress con ESPHome.
+> Cómo dos downlights comprados por error, tras una temporada en un armario, acabaron funcionando con ESPHome.
 
 ## La historia
 
-Compré este downlight RGBWW en AliExpress pensando que sería otro flasheo sencillo de ESPHome, como los dispositivos ESP8266/ESP32 que ya había hecho antes. Spoiler: no lo fue.
+Compré varias unidades de este downlight RGBWW de Moes en su versión **Zigbee**… y por error, dos de ellas resultaron ser la versión **WiFi**. Instalar dispositivos Tuya que dependen de un cloud desconocido y ajeno no es una opción para mí, así que las dos unidades se fueron directas a un armario.
 
-El dispositivo lleva un módulo **Tuya CB3S**, que esconde un SoC **Beken BK7231N**. Esa fue mi primera sorpresa: esto **no** es un ESP. Comparado con los ESP, los Beken son más incómodos: nombran los pines de otra forma, usan herramientas de flasheo distintas, el bootloader hay que meterlo manualmente puentenado CEN, y son muy quisquillosos con la alimentación durante el flasheo.
+Tiempo después retomé el asunto. Los LEDs son de muy buena calidad y era un desperdicio simplemente no usarlos, o instalarlos como luces «tontas» de on-off perdiendo toda la gama de colores que tienen. Había que liberarlos.
 
-Todo el proceso fue bastante frustrante para un novato. No tenía multímetro, así que no podía rastrear la PCB. No había un YAML exacto para este downlight, y los primeros intentos dejaron la luz pillada en rojo porque los pines RGB estaban mal. Aprendí a la fuerza que:
+| ![Producto](image1.png) | ![Dos tamaños](image2.png) |
+|---|---|
+| *El downlight tal como llegó de la tienda* | *Existen dos tamaños: 145 mm y 115 mm* |
 
-- El módulo CB3S hay que alimentarlo desde **220 V** durante el flasheo; alimentarlo desde los 3,3 V del USB-UART no es fiable y provoca desconexiones aleatorias.
-- **NUNCA hay que conectar los 3,3 V del adaptador USB-UART** al módulo Beken mientras la fuente de 220 V también lo alimenta. Solo van **GND, RX y TX** al adaptador.
-- Para entrar en modo download hay que **puentear CEN a GND unos segundos** justo después de lanzar la herramienta de flasheo.
-- Los pines Beken se llaman `P6`, `P7`, `P8`, etc., no `GPIOxx`.
-- Encontrar los pines PWM correctos requiere paciencia. Acabé flasheando un firmware de diagnóstico con una luz monocromo por cada pin candidato, encendiendo una a una y apuntando qué color se iluminaba. Fue la única forma de obtener el mapeo correcto.
+### Primer problema: ¿qué chip lleva esto?
+
+Ni el encapsulado ni la placa tenían impreso el nombre del chip. Nada. Solo un módulo con su blindaje metálico:
+
+| ![Módulo con blindaje](image3.jpg) |
+|---|
+| *El módulo con el blindaje puesto: imposible saber qué hay debajo* |
+
+Así que no quedó otra que extraer la protección metálica para averiguar primero el chip: un **Beken BK7231N**. Después, gracias a la documentación de **LibreTiny**, pude verificar el pinout e identificar el módulo como un **Tuya CB3S**: https://docs.libretiny.eu/boards/cb3s/
+
+| ![Chip a la vista](image4.jpg) |
+|---|
+| *Blindaje retirado: el Beken BK7231N por fin a la vista* |
+
+![Pinout CB3S](cb3s.svg)
+
+*Diagrama de pines del CB3S, extraído de la documentación de LibreTiny.*
+
+### Los Beken no son ESP
+
+Superados estos obstáculos, el trabajo «difícil» ya estaba hecho. O eso creía. Los chips Beken son un poco diferentes a los ESP y hay que tener en cuenta algunos factores:
+
+1. **El puente CEN**: hay que localizar el pin CEN y puentearlo con GND antes de encender el chip… pero quitar el puente antes de que empiece la escritura.
+2. **Alimentación 3,3 V estable**: el chip necesita un suministro de 3,3 V sólido. Si el USB no lo puede proporcionar, el flasheo fallará. Puedes alimentarlo con una fuente externa de 3,3 V o conectar el propio downlight a la red eléctrica. **OJO si haces esto último: verifica que la alimentación del USB NO esté conectada. Al adaptador USB-UART solo van GND, RX y TX.**
+3. **El orden que a mí me funcionó**: encender la placa, conectar el USB, lanzar el comando de flasheo, esperar unos segundos y quitar el puente CEN a GND.
+
+Una placa de prototipos (protoboard) ayuda muchísimo para estas cosas. Yo no soy experto ni en electrónica ni en informática, así que todo esto es trabajo de novato… pero lo importante es conseguir el objetivo.
+
+Como tenía downlights de los dos tamaños, puedo confirmar que **ambos usan la misma placa y el mismo software**.
+
+| ![Los dos tamaños cableados](image5.jpg) | ![Detalle de soldaduras](image6.jpg) |
+|---|---|
+| *Los dos tamaños de downlight cableados para el flasheo* | *Cables soldados a los pads UART del CB3S (GND, RX, TX)* |
+
+### El puzle de los colores
+
+Con el módulo por fin flasheado, probé un firmware «genérico» para luces RGB. No funcionó a la primera: la luz se quedaba pillada en rojo porque los pines PWM no coincidían. No había ningún YAML exacto para este downlight en ningún sitio, así que no quedó otra que probar todos los pines y combinaciones: flasheé un firmware de diagnóstico con una luz monocromo por cada pin candidato, fui encendiéndolas una a una y apuntando qué color se iluminaba de verdad. Tedioso, pero funcionó. El YAML de este repo es el resultado y **funciona al 100% con este dispositivo**.
 
 El pinout correcto de mi unidad es:
 
@@ -27,35 +61,20 @@ El pinout correcto de mi unidad es:
 | Blanco cálido | P6  |
 | Botón táctil | P14 |
 
+(Ojo: los pines Beken se llaman `P6`, `P7`, `P8`…, no `GPIOxx`.)
+
 ## Hardware
 
 - Módulo Tuya CB3S (Beken BK7231N)
 - Driver LED alimentado a 220 V
 - LEDs RGB + blanco frío/cálido
 - Botón táctil capacitivo en la tapa frontal
-
-## Referencia de pinout
-
-Este proyecto no habría sido posible sin el diagrama de pines del CB3S de **LibreTiny**:
-
-[https://docs.libretiny.eu/boards/cb3s/#pinout](https://docs.libretiny.eu/boards/cb3s/#pinout)
-
-Muchísimas gracias al equipo de LibreTiny por documentar este módulo. Sin esa página me habría perdido por completo.
-
-## Fotos
-
-*Marcadores de posición — aquí se añadirán las fotos.*
-
-| Foto | Descripción |
-|------|-------------|
-| `images/product.jpg` | El downlight tal como llegó de la tienda |
-| `images/pcb.jpg` | El módulo CB3S en la PCB, con el blindaje quitado |
-| `images/wiring.jpg` | Cableado para flashear: GND, RX, TX y el puente CEN-GND |
+- Disponible en dos tamaños (145 mm y 115 mm); misma placa y mismo firmware
 
 ## Uso
 
 1. Copia `downlight-cb3s-rgbww.yaml` a tu carpeta de configuración de ESPHome.
-2. Configura tu Wi-Fi y secretos en `secrets.yaml`.
+2. Configura tu Wi-Fi en `secrets.yaml`.
 3. Compila y flashea.
 4. Si los colores no coinciden en tu unidad, usa el enfoque de diagnóstico: crea una luz monocromo por pin PWM e identifica qué pin controla cada color.
 
@@ -64,13 +83,14 @@ Muchísimas gracias al equipo de LibreTiny por documentar este módulo. Sin esa 
 - `downlight-cb3s-rgbww.yaml` — configuración completa de ejemplo para ESPHome.
 - `esphome-device/config.yaml` — configuración hardware-only para el sitio de dispositivos de ESPHome.
 - `esphome-device/index.md` — página del dispositivo para el sitio de dispositivos de ESPHome.
+- `cb3s.svg` — diagrama de pines del CB3S (LibreTiny).
 
 ## Licencia
 
-MIT — úsalo bajo tu propia responsabilidad, especialmente cuando trabajes con tensión de red.
+AGPL-3.0 — úsalo bajo tu propia responsabilidad, especialmente cuando trabajes con tensión de red.
 
 ## Agradecimientos
 
-- [LibreTiny](https://docs.libretiny.eu/) por la plataforma CB3S/BK72xx y su documentación.
+- [LibreTiny](https://docs.libretiny.eu/) por la plataforma CB3S/BK72xx y su documentación. Sin la página del CB3S me habría perdido por completo.
 - A la comunidad de ESPHome por hacer posible el hogar inteligente local.
 - A la paciencia. Mucha paciencia.

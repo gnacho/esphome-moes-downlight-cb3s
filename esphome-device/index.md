@@ -5,9 +5,9 @@ description: ESPHome configuration for a Tuya CB3S (Beken BK7231N) based RGBWW d
 
 ## Product Images
 
-![Product](image1.jpg "Tuya CB3S RGBWW Downlight")
-![PCB](image2.jpg "CB3S module on the PCB")
-![Wiring](image3.jpg "Flashing wiring")
+![Product](../image1.png "Tuya CB3S RGBWW Downlight")
+![PCB](../image4.jpg "CB3S module with shield removed, Beken BK7231N visible")
+![Wiring](../image6.jpg "UART flashing wiring: GND, RX, TX")
 
 ## Description
 
