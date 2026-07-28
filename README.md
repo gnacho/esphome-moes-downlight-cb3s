@@ -71,12 +71,74 @@ The correct pinout for my unit is:
 - Capacitive touch button on the front cover
 - Available in two sizes (145 mm and 115 mm); same board, same firmware
 
-## Usage
+## Wiring for flashing
+
+Solder thin wires to the CB3S UART pads: **GND, RX (P10) and TX (P11)** going to your USB-to-UART adapter, plus a temporary bridge between **CEN and GND** (a breadboard helps a lot here).
+
+- **Recommended**: power the downlight board itself from mains (its onboard supply is rock solid). In that case, **do NOT connect the 3V3 line of the USB adapter — only GND, RX and TX.**
+- Alternative: power the chip from an external 3.3 V supply rated for at least 500 mA. The 3V3 pin of most USB adapters can't handle the Wi-Fi current spikes and flashing will fail.
+
+**WARNING: you are working with mains voltage. Double-check your wiring before plugging anything in, and never touch the board while it is powered.**
+
+The wiring detail photo above (image6) shows exactly what this looks like.
+
+## Backing up the stock firmware (highly recommended)
+
+Before flashing anything, dump the original Tuya firmware. It only takes a few minutes and it is your ticket back: with this file you can restore the downlight to its factory state at any time.
+
+The sequence that works (order matters):
+
+1. Board **powered off**.
+2. Bridge **CEN to GND**.
+3. Plug in the USB adapter (GND/RX/TX only).
+4. Launch the read command:
+   ```bash
+   ltchiptool flash read bk7231n moes-downlight-backup.bin -d /dev/ttyUSB0
+   ```
+5. **Power up the board.**
+6. **Remove the CEN-to-GND bridge.**
+7. Wait for the dump to finish. The backup must be exactly **2 MiB** (2097152 bytes).
+
+Keep that file somewhere safe.
+
+### Restoring the stock firmware
+
+If you ever want to go back to Tuya, write the backup back with the same wiring and the same power-up sequence:
+
+```bash
+ltchiptool flash write moes-downlight-backup.bin -d /dev/ttyUSB0
+```
+
+## Flashing ESPHome
 
 1. Copy `downlight-cb3s-rgbww.yaml` to your ESPHome config folder.
-2. Set your Wi-Fi in `secrets.yaml`.
-3. Compile and flash.
-4. If the colors are wrong for your unit, use the diagnostic approach: create one monochromatic light per PWM pin and identify which pin drives each color.
+2. Set your Wi-Fi credentials in `secrets.yaml` (`wifi_ssid` / `wifi_password`).
+3. Compile the firmware:
+   ```bash
+   esphome compile downlight-cb3s-rgbww.yaml
+   ```
+   The `.uf2` file ends up in `.esphome/build/<node-name>/.pioenvs/<node-name>/firmware.uf2`.
+4. Flash it with the same wiring and the same power-up sequence as the backup:
+   ```bash
+   ltchiptool flash write firmware.uf2 -d /dev/ttyUSB0
+   ```
+5. On first boot the downlight connects to your Wi-Fi. If it can't, it falls back to its own AP with a captive portal so you can reconfigure it.
+
+## OTA updates
+
+The wired flash is only needed once. From then on, update over the air from the ESPHome dashboard or with:
+
+```bash
+esphome run downlight-cb3s-rgbww.yaml
+```
+
+## Troubleshooting
+
+- **`flash read` works but `flash write` dies at the first sector (`0x11000`, "No response received")**: almost always insufficient 3.3 V power from the USB adapter. Power the board itself and connect only GND/RX/TX. Lowering the baud rate won't fix this.
+- **`Timeout attempting to link with chip`**: the chip is not in download mode. Check the CEN-to-GND bridge and repeat the power-up sequence; timing matters.
+- **Unstable reads/writes**: use short wires, solid connections (solder, don't rely on loose dupont cables) and a decent USB-UART adapter.
+- **No Wi-Fi after flashing**: the config includes a fallback AP with captive portal — connect to it and re-enter your credentials. Also make sure your `secrets.yaml` was next to the YAML when compiling.
+- **Colors don't match on your unit**: use the diagnostic approach described above — one monochromatic light per candidate PWM pin (`P6`, `P7`, `P8`, `P24`, `P26`), toggle them one by one and note which color actually lights up.
 
 ## Files
 
