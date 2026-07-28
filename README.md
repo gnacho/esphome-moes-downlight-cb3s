@@ -101,6 +101,8 @@ The sequence that works (order matters):
 
 Keep that file somewhere safe.
 
+This repo already includes my own stock dump: `firmware/moes-downlight-cb3s-stock.bin` (sanitized — the Tuya config block holding my Wi-Fi credentials was wiped, so a restored unit will boot stock but unpaired). It should work on any unit of this downlight, but **dumping your own is still recommended**.
+
 ### Restoring the stock firmware
 
 If you ever want to go back to Tuya, write the backup back with the same wiring and the same power-up sequence:

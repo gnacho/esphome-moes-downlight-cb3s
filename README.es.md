@@ -101,6 +101,8 @@ La secuencia que funciona (el orden importa):
 
 Guarda ese fichero a buen recaudo.
 
+Este repo ya incluye mi propio volcado de fábrica: `firmware/moes-downlight-cb3s-stock.bin` (saneado — el bloque de config Tuya con mis credenciales WiFi fue borrado, así que una unidad restaurada arrancará de fábrica pero sin emparejar). Debería funcionar en cualquier unidad de este downlight, pero **hacer tu propio volcado sigue siendo recomendable**.
+
 ### Restaurar el firmware original
 
 Si algún día quieres volver a Tuya, escribe el backup con el mismo cableado y la misma secuencia de encendido:
